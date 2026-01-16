@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>2026 太阳系超高模拟 2D 系统</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; color: #fff; font-family: 'Segoe UI', sans-serif; }
+        canvas { display: block; }
+        #info-panel {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px; border-left: 4px solid #4da6ff;
+            backdrop-filter: blur(10px); pointer-events: none;
+        }
+        h1 { margin: 0; font-size: 18px; color: #ffcc00; letter-spacing: 2px; }
+        .data-row { font-size: 12px; margin-top: 8px; color: #aaa; }
+        .data-row span { color: #4da6ff; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+<div id="info-panel">
+    <h1>SOLAR SYSTEM SIM 2.0</h1>
+    <div class="data-row">天体状态：<span>运行正常 (60FPS)</span></div>
+    <div class="data-row">坐标系：<span>2D Ecliptic View</span></div>
+    <div class="data-row">当前模拟天体：<span>太阳, 地球, 月球, 卫星</span></div>
+</div>
+
+<canvas id="galaxy"></canvas>
+
+<script>
+    const canvas = document.getElementById('galaxy');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    let time = 0;
+
+    // 天体配置（新增 name 字段）
+    const config = {
+        sun: { r: 55, color: '#fff5b1', glow: '#ff6600', name: '太阳' },
+        earth: { orbit: 280, r: 18, speed: 0.005, color: '#2277ff', name: '地球' },
+        moon: { orbit: 65, r: 6, speed: 0.022, color: '#dddddd', name: '月球' },
+        satellite: { orbit: 35, r: 2, speed: 0.07, color: '#ff4d4d', name: '卫星' }
+    };
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+
+    function drawStarfield() {
+        ctx.fillStyle = "white";
+        for(let i=0; i<100; i++) {
+            let x = Math.random() * width;
+            let y = Math.random() * height;
+            ctx.fillRect(x, y, 1, 1);
+        }
+    }
+
+    function drawSpaceObject(x, y, radius, color, isSun = false, name = '') {
+        ctx.save();
+        ctx.translate(x, y);
+
+        if (isSun) {
+            let gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 3);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            gradient.addColorStop(0.2, 'rgba(255, 204, 0, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(255, 102, 0, 0.3)');
+            gradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 3, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            let angleToSun = Math.atan2(-y, -x);
+            let grad = ctx.createRadialGradient(
+                Math.cos(angleToSun) * radius * 0.5, 
+                Math.sin(angleToSun) * radius * 0.5, 
+                0, 0, 0, radius
+            );
+            grad.addColorStop(0, color);
+            grad.addColorStop(1, '#000000');
+            ctx.fillStyle = grad;
+        }
+
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 绘制名称
+        if (name) {
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(name, 0, radius + 16);
+        }
+
+        ctx.restore();
+    }
+
+    function drawOrbit(x, y, radius, opacity = 0.15) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    function render() {
+        ctx.fillStyle = 'rgba(0, 0, 5, 0.15)';
+        ctx.fillRect(0, 0, width, height);
+
+        const cx = width / 2;
+        const cy = height / 2;
+
+        // 太阳
+        drawSpaceObject(cx, cy, config.sun.r, config.sun.color, true, config.sun.name);
+
+        // 地球
+        drawOrbit(cx, cy, config.earth.orbit);
+        let ex = cx + Math.cos(time * config.earth.speed) * config.earth.orbit;
+        let ey = cy + Math.sin(time * config.earth.speed) * config.earth.orbit;
+        drawSpaceObject(ex, ey, config.earth.r, config.earth.color, false, config.earth.name);
+
+        // 月球
+        drawOrbit(ex, ey, config.moon.orbit, 0.1);
+        let mx = ex + Math.cos(time * config.moon.speed) * config.moon.orbit;
+        let my = ey + Math.sin(time * config.moon.speed) * config.moon.orbit;
+        drawSpaceObject(mx, my, config.moon.r, config.moon.color, false, config.moon.name);
+
+        // 卫星
+        let sx = ex + Math.cos(time * config.satellite.speed) * config.satellite.orbit;
+        let sy = ey + Math.sin(time * config.satellite.speed) * config.satellite.orbit;
+        drawSpaceObject(sx, sy, config.satellite.r, config.satellite.color, false, config.satellite.name);
+
+        time += 1;
+        requestAnimationFrame(render);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    render();
+</script>
+</body>
+</html>

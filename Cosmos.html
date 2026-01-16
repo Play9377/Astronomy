@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>2026 全尺度宇宙模拟器 - 2.0 增强版</title>
+    <style>
+        body { margin: 0; background: #000; color: #fff; overflow: hidden; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.85); padding: 20px; border-radius: 12px; border: 1px solid #00f0ff; box-shadow: 0 0 15px rgba(0,240,255,0.2); z-index: 10; max-width: 300px; }
+        .controls { margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        button { background: #1a1a1a; color: #00f0ff; border: 1px solid #00f0ff; padding: 6px; cursor: pointer; border-radius: 4px; font-size: 12px; }
+        button:hover { background: #00f0ff; color: #000; }
+        .info-panel { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px; font-size: 12px; line-height: 1.6; border-left: 3px solid #00f0ff; }
+        #data-stream { position: absolute; top: 20px; right: 20px; text-align: right; color: #00f0ff; font-family: monospace; font-size: 12px; }
+        .label-tag { color: #aaa; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div style="font-size: 18px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 8px;">COSMOS 2026 PRO</div>
+    <div class="controls">
+        <div style="grid-column: span 2; font-size: 13px; margin-bottom: 5px;">时间流速: <span id="speedDisplay">1.00</span>x</div>
+        <button onclick="changeSpeed(0.5)">减速</button>
+        <button onclick="changeSpeed(2.0)">加速</button>
+        <button onclick="togglePause()" id="pauseBtn">暂停系统</button>
+        <button onclick="resetView()">重置中心</button>
+    </div>
+    <div style="margin-top: 15px; font-size: 11px; color: #888;">
+        滚动鼠标: 深度缩放 (跨越光年) <br>
+        鼠标拖拽: 空间平移 <br>
+        最新发现: <span style="color:#00f0ff">暗物质星系 Cloud-9 已载入</span>
+    </div>
+</div>
+
+<div class="info-panel" id="detailPanel">
+    <b>当前位置:</b> <span id="locTxt">银河系 - 太阳系</span><br>
+    <b>本星系群状态:</b> 仙女座星系接近中...<br>
+    <b>2026 探测动态:</b> <span id="news">JWST 正在分析系外行星大气</span>
+</div>
+
+<div id="data-stream">
+    SYSTEM_TIME: 2026-01-14<br>
+    TELESCOPE: CSST & JWST ACTIVE<br>
+    GALAXY_COUNT: ~2,000,000,000,000
+</div>
+
+<script>
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+document.body.appendChild(canvas);
+
+let width, height, scale = 0.05, offsetX, offsetY, speed = 1.0, isPaused = false, time = 0;
+
+// --- 2026 全宇宙天体数据库 ---
+const Universe = {
+    // 太阳系成员
+    solar: [
+        { name: "水星", d: 80, s: 4, v: 0.047, c: "#A5A5A5" },
+        { name: "金星", d: 120, s: 9, v: 0.035, c: "#E3BB76" },
+        { name: "地球", d: 170, s: 10, v: 0.029, c: "#2271B3", moons: [{name:"月球", d:15, s:2, v:0.1, c:"#ccc"}] },
+        { name: "火星", d: 230, s: 6, v: 0.024, c: "#E27B58", moons: [{name:"火卫一", d:8, s:0.8, v:0.2}, {name:"火卫二", d:12, s:0.5, v:0.15}] },
+        { name: "谷神星(准)", d: 280, s: 3, v: 0.017, c: "#DDD" },
+        { name: "木星(气态)", d: 400, s: 25, v: 0.013, c: "#D39C7E", moons: [{name:"木卫一", d:35, s:2, v:0.08},{name:"木卫二", d:42, s:1.8, v:0.05}]},
+        { name: "土星(气态)", d: 550, s: 22, v: 0.009, c: "#C5AB6E", rings: true, moons: [{name:"土卫六", d:40, s:2.5, v:0.05}]},
+        { name: "天王星(冰巨)", d: 700, s: 15, v: 0.006, c: "#BBE1E4", rings: true },
+        { name: "海王星(冰巨)", d: 850, s: 15, v: 0.005, c: "#6081FF", moons: [{name:"海卫一", d:30, s:1.5, v:0.06}]},
+        { name: "冥王星(准)", d: 1000, s: 3, v: 0.004, c: "#9CA6B7", moons:[{name:"冥卫一", d:8, s:1.5, v:0.1}] },
+        { name: "阋神星(准)", d: 1200, s: 3, v: 0.003, c: "#fff" }
+    ],
+    // 2026 关键更新：河外星系与远空天体
+    extra: [
+        { name: "半人马座α", d: 4500, s: 30, c: "#FFD", type: "star" },
+        { name: "仙女座星系 (M31)", d: 12000, s: 150, c: "#AABFFF", type: "galaxy", desc: "250万光年" },
+        { name: "三角座星系 (M33)", d: 15000, s: 80, c: "#FFAAFF", type: "galaxy" },
+        { name: "大麦哲伦云 (LMC)", d: 8000, s: 60, c: "#DDF", type: "galaxy" },
+        { name: "IC 1101 (最大星系)", d: 35000, s: 400, c: "#FFE0B2", type: "galaxy", desc: "直径600万光年" },
+        { name: "Cloud-9 (暗物质星系)", d: 22000, s: 120, c: "rgba(100,100,255,0.2)", type: "dark", desc: "2026新发现" },
+        { name: "圆规星系 (活跃核)", d: 18000, s: 50, c: "#FF5252", type: "galaxy" },
+        { name: "MoM-z14 (最远星系)", d: 50000, s: 20, c: "#f00", type: "galaxy" }
+    ]
+};
+
+function init() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+    offsetX = width / 2;
+    offsetY = height / 2;
+}
+
+function draw() {
+    ctx.fillStyle = '#000008'; // 深空背景
+    ctx.fillRect(0, 0, width, height);
+    
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+
+    // 1. 绘制宇宙宏观结构
+    drawStaticStructures();
+
+    // 2. 绘制太阳
+    const sunGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 150);
+    sunGlow.addColorStop(0, "#fff");
+    sunGlow.addColorStop(0.2, "#ffcc00");
+    sunGlow.addColorStop(1, "transparent");
+    ctx.fillStyle = sunGlow;
+    ctx.beginPath();
+    ctx.arc(0, 0, 120, 0, Math.PI*2);
+    ctx.fill();
+
+    // 3. 绘制太阳系行星
+    Universe.solar.forEach(p => {
+        const ang = time * p.v;
+        const x = Math.cos(ang) * p.d;
+        const y = Math.sin(ang) * p.d;
+
+        // 轨道线
+        ctx.strokeStyle = "rgba(0, 240, 255, 0.1)";
+        ctx.lineWidth = 1/scale;
+        ctx.beginPath(); ctx.arc(0, 0, p.d, 0, Math.PI*2); ctx.stroke();
+
+        // 行星体
+        ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(x, y, p.s, 0, Math.PI*2); ctx.fill();
+
+        // 标签
+        if (scale > 0.1) {
+            ctx.fillStyle = "#fff";
+            ctx.font = `${12/scale}px Arial`;
+            ctx.fillText(p.name, x + p.s + 5, y);
+        }
+
+        // 行星环
+        if (p.rings) {
+            ctx.strokeStyle = "rgba(255,255,255,0.2)";
+            ctx.beginPath(); ctx.ellipse(x, y, p.s*2.2, p.s*0.8, ang, 0, Math.PI*2); ctx.stroke();
+        }
+
+        // 卫星补全
+        if (p.moons && scale > 0.3) {
+            p.moons.forEach(m => {
+                const ma = time * m.v * 3;
+                const mx = x + Math.cos(ma) * m.d;
+                const my = y + Math.sin(ma) * m.d;
+                ctx.fillStyle = m.c || "#888";
+                ctx.beginPath(); ctx.arc(mx, my, m.s, 0, Math.PI*2); ctx.fill();
+                ctx.font = `${8/scale}px Arial`;
+                ctx.fillText(m.name, mx + 3, my);
+            });
+        }
+    });
+   // 4. 绘制河外星系及2026新天体
+    Universe.extra.forEach(ex => {
+        const angle = Universe.extra.indexOf(ex) * 1.2; // 固定位置
+        const exX = Math.cos(angle) * ex.d;
+        const exY = Math.sin(angle) * ex.d;
+
+        if (ex.type === "galaxy") {
+            const grad = ctx.createRadialGradient(exX, exY, 0, exX, exY, ex.s);
+            grad.addColorStop(0, ex.c);
+            grad.addColorStop(1, "transparent");
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(exX, exY, ex.s, 0, Math.PI*2); ctx.fill();
+            // 旋涡细节模拟
+            ctx.strokeStyle = "rgba(255,255,255,0.1)";
+            for(let i=0; i<3; i++){
+                ctx.beginPath(); ctx.ellipse(exX, exY, ex.s, ex.s/3, angle + i, 0, Math.PI*2); ctx.stroke();
+            }
+        } else if (ex.type === "dark") {
+            ctx.strokeStyle = "rgba(100,100,255,0.4)";
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.arc(exX, exY, ex.s, 0, Math.PI*2); ctx.stroke();
+            ctx.setLineDash([]);
+        } else {
+            ctx.fillStyle = ex.c;
+            ctx.beginPath(); ctx.arc(exX, exY, 15, 0, Math.PI*2); ctx.fill();
+        }
+
+        ctx.fillStyle = "#00f0ff";
+        ctx.font = `${14/scale}px Arial`;
+        ctx.fillText(ex.name, exX + ex.s/2, exY);
+        if (ex.desc && scale < 0.05) {
+            ctx.fillStyle = "#888";
+            ctx.font = `${10/scale}px Arial`;
+            ctx.fillText(ex.desc, exX + ex.s/2, exY + 20/scale);
+        }
+    });
+
+    ctx.restore();
+
+    if (!isPaused) time += 0.2 * speed;
+    updateUI();
+    requestAnimationFrame(draw);
+}
+
+function drawStaticStructures() {
+    // 柯伊伯带 (1100-1500)
+    drawParticleRing(1100, 1500, "rgba(200,200,200,0.1)", 400);
+    // 奥尔特云 (15000-25000)
+    drawParticleRing(20000, 25000, "rgba(150,150,255,0.05)", 800);
+    // 星际壁垒 / 终点激波
+    ctx.strokeStyle = "rgba(0,255,255,0.05)";
+    ctx.lineWidth = 50;
+    ctx.beginPath(); ctx.arc(0, 0, 1400, 0, Math.PI*2); ctx.stroke();
+}
+
+function drawParticleRing(inner, outer, color, count) {
+    ctx.fillStyle = color;
+    for(let i=0; i<count; i++) {
+        const r = inner + (i * 137.5 % (outer - inner));
+        const a = i * 2.4; // 黄金角分布
+        ctx.fillRect(Math.cos(a)*r, Math.sin(a)*r, 2, 2);
+    }
+}
+
+function updateUI() {
+    const loc = scale > 0.1 ? "太阳系 - 行星区" : (scale > 0.01 ? "本星系群" : "拉尼亚凯亚超星系团层面");
+    document.getElementById('locTxt').innerText = loc;
+    // 模拟 2026 数据流
+    if (Math.random() > 0.98) {
+        const news = [
+            "JWST 探测到 IC 1101 边缘恒星形成",
+            "CSST 巡天望远镜 2026 仿真数据入库",
+            "暗物质星系 Cloud-9 引力透镜效应确认",
+            "甚大望远镜首次拍摄到 M31 恒星特写"
+        ];
+        document.getElementById('news').innerText = news[Math.floor(Math.random()*news.length)];
+    }
+}
+
+// 交互逻辑
+function changeSpeed(delta) { speed = Math.max(0.01, speed * delta); document.getElementById('speedDisplay').innerText = speed.toFixed(2); }
+function togglePause() { isPaused = !isPaused; document.getElementById('pauseBtn').innerText = isPaused ? "运行系统" : "暂停系统"; }
+function resetView() { scale = 0.05; offsetX = width/2; offsetY = height/2; }
+
+window.addEventListener('wheel', e => { 
+    const zoom = e.deltaY > 0 ? 0.85 : 1.15; 
+    scale = Math.max(0.0001, Math.min(10, scale * zoom)); 
+});
+
+let isDrag = false, lx, ly;
+window.addEventListener('mousedown', e => { isDrag = true; lx = e.clientX; ly = e.clientY; });
+window.addEventListener('mousemove', e => {
+    if (isDrag) {
+        offsetX += e.clientX - lx; offsetY += e.clientY - ly;
+        lx = e.clientX; ly = e.clientY;
+    }
+});
+window.addEventListener('mouseup', () => isDrag = false);
+window.addEventListener('resize', init);
+
+init();
+draw();
+</script>
+
+</body>
+</html>

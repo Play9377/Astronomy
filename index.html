@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钦天监百科 - 探索宇宙的奥秘</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --background-color: #0a192f;
+            --text-color: #f8f9fa;
+            --card-bg: rgba(15, 30, 60, 0.8);
+            --header-bg: rgba(10, 25, 47, 0.95);
+        }
+        
+        .theme-2 {
+            --primary-color: #6f42c1;
+            --background-color: #1a1a2e;
+            --card-bg: rgba(30, 30, 60, 0.8);
+            --header-bg: rgba(26, 26, 46, 0.95);
+        }
+        
+        .theme-3 {
+            --primary-color: #20c997;
+            --background-color: #001219;
+            --card-bg: rgba(0, 40, 40, 0.8);
+            --header-bg: rgba(0, 18, 25, 0.95);
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+            min-height: 100vh;
+            transition: background-color 0.5s ease;
+        }
+        
+        /* 奥尔特云背景 */
+        .oort-cloud-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(120, 119, 198, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 40%, rgba(120, 119, 198, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 50% 80%, rgba(120, 119, 198, 0.05) 0%, transparent 20%);
+            background-color: var(--background-color);
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .oort-cloud-bg::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(100, 149, 237, 0.03) 1px, transparent 1px),
+                radial-gradient(circle at 80% 70%, rgba(100, 149, 237, 0.03) 1px, transparent 1px),
+                radial-gradient(circle at 40% 50%, rgba(100, 149, 237, 0.03) 1px, transparent 1px);
+            background-size: 200px 200px, 300px 300px, 250px 250px;
+            animation: drift 60s infinite linear;
+        }
+        
+        @keyframes drift {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+        
+        /* 导航栏样式 */
+        .navbar-custom {
+            background-color: var(--header-bg) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.5s ease;
+        }
+        
+        .navbar-brand {
+            color: var(--primary-color) !important;
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+        
+        .navbar-nav .nav-link {
+            color: var(--text-color) !important;
+            font-weight: 500;
+            margin: 0 5px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-nav .nav-link:hover, .navbar-nav .nav-link.active {
+            background-color: var(--primary-color);
+            color: white !important;
+        }
+        
+        /* 主内容区域 */
+        .main-content {
+            padding-top: 120px;
+            padding-bottom: 100px;
+        }
+        
+        /* 卡片样式 */
+        .astro-card {
+            background-color: var(--card-bg);
+            border-radius: 15px;
+            border: 1px solid rgba(100, 149, 237, 0.2);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .astro-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+        }
+        
+        .planet-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+        
+        /* 星系卡片 */
+        .galaxy-card {
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        /* 页脚样式 */
+        .footer {
+            background-color: var(--header-bg);
+            color: var(--text-color);
+            padding: 30px 0;
+            position: relative;
+            margin-top: 60px;
+            border-top: 1px solid rgba(100, 149, 237, 0.2);
+        }
+        
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer a:hover {
+            color: #6ea8fe;
+            text-decoration: underline;
+        }
+        
+        /* 主题切换按钮 */
+        .theme-switcher {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .theme-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .theme-btn:hover {
+            transform: rotate(30deg);
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .main-content {
+                padding-top: 160px;
+            }
+            
+            .navbar-collapse {
+                background-color: var(--header-bg);
+                padding: 15px;
+                border-radius: 10px;
+                margin-top: 10px;
+            }
+            
+            .theme-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--background-color);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 5px;
+        }
+        
+        /* 行星颜色 */
+        .mercury { color: #a9a9a9; }
+        .venus { color: #e39e1c; }
+        .earth { color: #2b6ca3; }
+        .mars { color: #c1440e; }
+        .jupiter { color: #d8ca9d; }
+        .saturn { color: #e4cd9e; }
+        .uranus { color: #4fd0e7; }
+        .neptune { color: #4b70dd; }
+        .moon { color: #d4d4d4; }
+    </style>
+</head>
+<body>
+    <!-- 奥尔特云背景 -->
+    <div class="oort-cloud-bg"></div>
+    
+    <!-- 主题切换按钮 -->
+    <div class="theme-switcher">
+        <button class="theme-btn" id="themeToggle">
+            <i class="fas fa-palette"></i>
+        </button>
+    </div>
+    
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-star me-2"></i>钦天监百科
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <span class="navbar-toggler-icon" style="filter: invert(1);"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#planets-section">
+                            <i class="fas fa-globe-americas me-1"></i>太阳系
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#moon-section">
+                            <i class="fas fa-moon me-1"></i>月球
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#galaxies-section">
+                            <i class="fas fa-star-and-crescent me-1"></i>本星系群
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-book me-1"></i>更多知识
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="Cosmos.html"><i class="fas fa-sun me-2"></i>拉尼凯亚超星系模拟</a></li>
+                            <li><a class="dropdown-item" href="SolarSystem.html"><i class="fas fa-meteor me-2"></i>太阳系全景运动模拟 </a></li>
+                            <li><a class="dropdown-item" href="Saturn.html"><i class="fas fa-satellite me-2"></i>土星运动模拟</a></li>
+                            <li><a class="dropdown-item" href="Earth.html"><i class="fas fa-satellite me-2"></i>地球运动模拟</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-question-circle me-2"></i>常见问题</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <form class="d-flex">
+                    <input class="form-control me-2" type="search" placeholder="搜索天文知识...">
+                    <button class="btn btn-outline-light" type="submit">搜索</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- 主内容区域 -->
+    <div class="container main-content">
+        <!-- 标题区域 -->
+        <div class="row mb-5 text-center">
+            <div class="col-12">
+                <h1 class="display-4 fw-bold mb-3">探索宇宙的奥秘</h1>
+                <p class="lead">从我们的太阳系到本星系群，了解天文学的奇妙世界</p>
+                <div class="d-flex justify-content-center flex-wrap">
+                    <span class="badge bg-primary me-2 mb-2">八大行星</span>
+                    <span class="badge bg-success me-2 mb-2">51个星系</span>
+                    <span class="badge bg-warning me-2 mb-2">奥尔特云</span>
+                    <span class="badge bg-info mb-2">交互式体验</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 太阳系行星部分 -->
+        <section id="planets-section" class="mb-5">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h2 class="border-bottom pb-2"><i class="fas fa-sun me-2"></i>太阳系八大行星</h2>
+                    <p class="text-muted">探索我们太阳系中的行星，从离太阳最近的水星到遥远的海王星。</p>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <!-- 行星卡片将通过JavaScript动态生成 -->
+                <div id="planets-container" class="row g-4"></div>
+            </div>
+        </section>
+        
+        <!-- 月球部分 -->
+        <section id="moon-section" class="mb-5">
+            <div class="row">
+                <div class="col-12">
+                    <h2 class="border-bottom pb-2"><i class="fas fa-moon me-2"></i>地球的卫星 - 月球</h2>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-lg-8">
+                    <div class="astro-card p-4 h-100">
+                        <h3 class="moon"><i class="fas fa-moon me-2"></i>月球</h3>
+                        <p>月球是地球唯一的天然卫星，也是太阳系中第五大的卫星。它的直径约为地球的四分之一，质量约为地球的1/81。</p>
+                        
+                        <h5 class="mt-4">主要特征：</h5>
+                        <ul>
+                            <li><strong>距离地球：</strong>平均约384,400公里</li>
+                            <li><strong>直径：</strong>约3,474公里</li>
+                            <li><strong>轨道周期：</strong>约27.3天（恒星月）</li>
+                            <li><strong>表面重力：</strong>地球的1/6</li>
+                            <li><strong>表面温度：</strong>白天约107°C，夜间约-153°C</li>
+                        </ul>
+                        
+                        <p>月球表面布满了由古老的火山喷发和小行星撞击形成的月海和环形山。月球对地球的潮汐效应有显著影响，并且可能在地球生命的演化中发挥了重要作用。</p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="astro-card p-4 h-100">
+                        <h5><i class="fas fa-info-circle me-2"></i>月球探测里程碑</h5>
+                        <div class="mt-3">
+                            <p><strong>1959年：</strong>苏联的月球2号首次撞击月球表面</p>
+                            <p><strong>1969年：</strong>阿波罗11号实现首次人类登月</p>
+                            <p><strong>1970年：</strong>苏联月球16号首次自动采集月壤样本</p>
+                            <p><strong>2019年：</strong>中国嫦娥四号首次在月球背面着陆</p>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="progress mb-2" style="height: 20px;">
+                                <div class="progress-bar" role="progressbar" style="width: 100%">月球探索完成度</div>
+                            </div>
+                            <small class="text-muted">人类已对月球进行了广泛探索，但仍有大量科学问题待解答。</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 本星系群部分 -->
+        <section id="galaxies-section" class="mb-5">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h2 class="border-bottom pb-2"><i class="fas fa-stars me-2"></i>本星系群 - 51个星系</h2>
+                    <p class="text-muted">本星系群是一个由至少51个星系组成的星系群，直径大约1000万光年，我们的银河系是其中一部分。</p>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="astro-card p-4">
+                        <h5 class="mb-3">主要星系列表</h5>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">星系名称</th>
+                                        <th scope="col">类型</th>
+                                        <th scope="col">距离（万光年）</th>
+                                        <th scope="col">直径（万光年）</th>
+                                        <th scope="col">备注</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="galaxies-table">
+                                    <!-- 星系数据将通过JavaScript动态生成 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="astro-card galaxy-card p-3">
+                                    <h6><i class="fas fa-star me-2"></i>银河系</h6>
+                                    <p class="small mb-0">我们的家园星系，一个包含1000-4000亿颗恒星的棒旋星系。</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="astro-card galaxy-card p-3 mt-3 mt-md-0">
+                                    <h6><i class="fas fa-star me-2"></i>仙女座星系 (M31)</h6>
+                                    <p class="small mb-0">本星系群中最大的星系，正在以约110公里/秒的速度靠近银河系。</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-primary mt-4" role="alert">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            <strong>你知道吗？</strong> 大约45亿年后，银河系和仙女座星系将发生碰撞，合并成一个巨大的椭圆星系。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 col-md-6 mb-4 mb-md-0">
+                    <h5><i class="fas fa-star me-2"></i>钦天监百科</h5>
+                    <p>一个致力于普及天文学知识的网站，帮助人们更好地理解我们所在的宇宙。</p>
+                    <div class="social-links mt-3">
+                        <a href="#" class="me-3"><i class="fab fa-twitter fa-lg"></i></a>
+                        <a href="#" class="me-3"><i class="fab fa-facebook fa-lg"></i></a>
+                        <a href="#" class="me-3"><i class="fab fa-instagram fa-lg"></i></a>
+                        <a href="#"><i class="fab fa-youtube fa-lg"></i></a>
+                    </div>
+                </div>
+                
+                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+                    <h5>快速链接</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#planets-section">八大行星</a></li>
+                        <li><a href="#moon-section">月球</a></li>
+                        <li><a href="#galaxies-section">本星系群</a></li>
+                        <li><a href="#">恒星演化</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h5>资源</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#">NASA官方网站</a></li>
+                        <li><a href="#">欧洲空间局</a></li>
+                        <li><a href="#">中国国家航天局</a></li>
+                        <li><a href="#">哈勃望远镜图像库</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-3 col-md-6">
+                    <h5>联系我们</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-envelope me-2"></i> 1435867846@qq.com</li>
+                        <li><i class="fas fa-phone me-2"></i> +(86) 15119964024</li>
+                        <li><i class="fas fa-map-marker-alt me-2"></i> 青竹园B栋245号，东莞市</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <hr class="mt-4 mb-4">
+            
+            <div class="row">
+                <div class="col-md-6 text-center text-md-start">
+                    <p>&copy; 2026 钦天监百科. 保留所有权利.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <p>设计使用 <a href="https://getbootstrap.com/" target="_blank">Bootstrap 5</a> | 背景灵感：奥尔特云</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 行星数据
+        const planets = [
+            { 
+                name: "水星", 
+                icon: "fas fa-circle mercury", 
+                description: "太阳系中最小的行星，也是离太阳最近的行星。",
+                facts: ["没有卫星", "表面温差极大", "轨道周期：88地球日"],
+                distance: "0.39 AU"
+            },
+            { 
+                name: "金星", 
+                icon: "fas fa-circle venus", 
+                description: "被称为地球的姐妹星，大小和质量与地球相似。",
+                facts: ["自转方向与大多数行星相反", "表面温度高达462°C", "有浓厚二氧化碳大气层"],
+                distance: "0.72 AU"
+            },
+            { 
+                name: "地球", 
+                icon: "fas fa-globe-americas earth", 
+                description: "我们生活的星球，目前已知唯一存在生命的行星。",
+                facts: ["唯一有液态水的行星", "有一个天然卫星（月球）", "自转周期：23.93小时"],
+                distance: "1 AU"
+            },
+            { 
+                name: "火星", 
+                icon: "fas fa-circle mars", 
+                description: "被称为红色行星，表面有大量氧化铁。",
+                facts: ["有两个小卫星", "太阳系最高的火山（奥林匹斯山）", "可能有地下液态水"],
+                distance: "1.52 AU"
+            },
+            { 
+                name: "木星", 
+                icon: "fas fa-circle jupiter", 
+                description: "太阳系中最大的行星，质量是其他行星总和的2.5倍。",
+                facts: ["至少有79颗卫星", "有大红斑（巨大风暴）", "主要由氢和氦组成"],
+                distance: "5.20 AU"
+            },
+            { 
+                name: "土星", 
+                icon: "fas fa-circle saturn", 
+                description: "以其壮观的环系闻名，环主要由冰粒子组成。",
+                facts: ["至少有82颗卫星", "密度比水还小", "土卫六有浓厚大气层"],
+                distance: "9.58 AU"
+            },
+            { 
+                name: "天王星", 
+                icon: "fas fa-circle uranus", 
+                description: "冰巨星，自转轴几乎与公转轨道平行。",
+                facts: ["有13个已知的环", "自转轴倾角约98°", "表面温度约-224°C"],
+                distance: "19.22 AU"
+            },
+            { 
+                name: "海王星", 
+                icon: "fas fa-circle neptune", 
+                description: "太阳系中距离太阳最远的行星，风速可达2100 km/h。",
+                facts: ["有14颗已知卫星", "有大黑斑（风暴系统）", "轨道周期：165地球年"],
+                distance: "30.05 AU"
+            }
+        ];
+        
+        // 星系数据（示例，实际51个）
+        const galaxies = [
+            { name: "银河系", type: "棒旋星系", distance: "0", diameter: "10-12", note: "我们的家园星系" },
+            { name: "仙女座星系 (M31)", type: "旋涡星系", distance: "254", diameter: "22", note: "本星系群中最大" },
+            { name: "三角座星系 (M33)", type: "旋涡星系", distance: "300", diameter: "6", note: "本星系群第三大" },
+            { name: "大麦哲伦云", type: "不规则星系", distance: "16", diameter: "1.4", note: "银河系卫星星系" },
+            { name: "小麦哲伦云", type: "不规则星系", distance: "20", diameter: "0.7", note: "银河系卫星星系" },
+            { name: "M32", type: "椭圆星系", distance: "254", diameter: "0.8", note: "仙女座星系卫星" },
+            { name: "M110", type: "椭圆星系", distance: "254", diameter: "1.7", note: "仙女座星系卫星" },
+            { name: "NGC 147", type: "椭圆星系", distance: "230", diameter: "1.3", note: "仙女座星系卫星" },
+            { name: "NGC 185", type: "椭圆星系", distance: "200", diameter: "1.2", note: "仙女座星系卫星" },
+            { name: "IC 10", type: "不规则星系", distance: "220", diameter: "0.5", note: "本星系群中最近的星暴星系" }
+        ];
+        
+        // 主题切换功能
+        const themeToggle = document.getElementById('themeToggle');
+        let currentTheme = 1;
+        
+        themeToggle.addEventListener('click', function() {
+            // 移除当前主题类
+            document.body.classList.remove(`theme-${currentTheme}`);
+            
+            // 循环切换主题
+            currentTheme = currentTheme % 3 + 1;
+            
+            // 添加新主题类
+            document.body.classList.add(`theme-${currentTheme}`);
+            
+            // 更新按钮图标
+            const icons = ['fa-palette', 'fa-moon', 'fa-sun'];
+            themeToggle.innerHTML = `<i class="fas ${icons[currentTheme-1]}"></i>`;
+            
+            // 显示提示
+            const themeNames = ['默认', '深紫', '深绿'];
+            showNotification(`已切换至${themeNames[currentTheme-1]}主题`);
+        });
+        
+        // 显示通知函数
+        function showNotification(message) {
+            // 移除现有的通知
+            const existingNotification = document.querySelector('.theme-notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+            
+            // 创建新通知
+            const notification = document.createElement('div');
+            notification.className = 'theme-notification';
+            notification.innerHTML = `
+                <div class="alert alert-success alert-dismissible fade show" role="alert" style="position: fixed; bottom: 90px; right: 20px; z-index: 1000; min-width: 250px;">
+                    <i class="fas fa-check-circle me-2"></i> ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                const alert = notification.querySelector('.alert');
+                if (alert) {
+                    alert.classList.remove('show');
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 3000);
+        }
+        
+        // 生成行星卡片
+        function renderPlanets() {
+            const container = document.getElementById('planets-container');
+            container.innerHTML = '';
+            
+            planets.forEach(planet => {
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-3';
+                
+                col.innerHTML = `
+                    <div class="astro-card p-4 h-100">
+                        <div class="text-center">
+                            <div class="${planet.icon} planet-icon"></div>
+                            <h4 class="${planet.name === '水星' ? 'mercury' : planet.name === '金星' ? 'venus' : planet.name === '地球' ? 'earth' : planet.name === '火星' ? 'mars' : planet.name === '木星' ? 'jupiter' : planet.name === '土星' ? 'saturn' : planet.name === '天王星' ? 'uranus' : 'neptune'}">${planet.name}</h4>
+                            <p class="text-muted">距离太阳: ${planet.distance}</p>
+                        </div>
+                        
+                        <p>${planet.description}</p>
+                        
+                        <ul class="list-unstyled">
+                            ${planet.facts.map(fact => `<li><i class="fas fa-circle small me-2"></i>${fact}</li>`).join('')}
+                        </ul>
+                        
+                        <button class="btn btn-sm btn-outline-primary mt-2 w-100" onclick="showPlanetDetail('${planet.name}')">
+                            了解更多
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(col);
+            });
+        }
+        
+        // 生成星系表格
+        function renderGalaxies() {
+            const tableBody = document.getElementById('galaxies-table');
+            tableBody.innerHTML = '';
+            
+            galaxies.forEach((galaxy, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <th scope="row">${index + 1}</th>
+                    <td>${galaxy.name}</td>
+                    <td>${galaxy.type}</td>
+                    <td>${galaxy.distance}</td>
+                    <td>${galaxy.diameter}</td>
+                    <td>${galaxy.note}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            // 添加更多星系占位行（模拟51个星系）
+            for (let i = galaxies.length + 1; i <= 20; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <th scope="row">${i}</th>
+                    <td>星系 ${i}</td>
+                    <td>${['旋涡星系', '椭圆星系', '不规则星系'][Math.floor(Math.random() * 3)]}</td>
+                    <td>${Math.floor(Math.random() * 500) + 50}</td>
+                    <td>${(Math.random() * 5).toFixed(1)}</td>
+                    <td>本星系群成员</td>
+                `;
+                tableBody.appendChild(row);
+            }
+            
+            // 添加提示行
+            const infoRow = document.createElement('tr');
+            infoRow.className = 'table-info';
+            infoRow.innerHTML = `
+                <td colspan="6" class="text-center">
+                    <i class="fas fa-info-circle me-2"></i>显示前20个星系，本星系群共有至少51个星系成员
+                </td>
+            `;
+            tableBody.appendChild(infoRow);
+        }
+        
+        // 显示行星详情
+        function showPlanetDetail(planetName) {
+            const planet = planets.find(p => p.name === planetName);
+            if (planet) {
+                alert(`${planetName}详细信息：\n\n描述：${planet.description}\n\n特点：\n${planet.facts.join('\n')}\n\n距离太阳：${planet.distance}`);
+            }
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            renderPlanets();
+            renderGalaxies();
+            
+            // 平滑滚动到锚点
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    const targetId = this.getAttribute('href');
+                    if (targetId === '#') return;
+                    
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        e.preventDefault();
+                        
+                        // 计算偏移量（考虑固定导航栏高度）
+                        const offset = 80;
+                        const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset - offset;
+                        
+                        window.scrollTo({
+                            top: targetPosition,
+                            behavior: 'smooth'
+                        });
+                        
+                        // 更新导航栏活动状态
+                        document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+                            link.classList.remove('active');
+                        });
+                        this.classList.add('active');
+                    }
+                });
+            });
+            
+            // 监听滚动更新导航栏活动状态
+            window.addEventListener('scroll', function() {
+                const sections = ['planets-section', 'moon-section', 'galaxies-section'];
+                const scrollPosition = window.scrollY + 100;
+                
+                sections.forEach(sectionId => {
+                    const section = document.getElementById(sectionId);
+                    if (section) {
+                        const sectionTop = section.offsetTop;
+                        const sectionHeight = section.clientHeight;
+                        
+                        if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+                                link.classList.remove('active');
+                                if (link.getAttribute('href') === `#${sectionId}`) {
+                                    link.classList.add('active');
+                                }
+                            });
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
