@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地球与月球系统</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            font-family: Arial, sans-serif;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        button {
+            margin: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        input[type="range"] {
+            width: 120px;
+            margin: 0 10px;
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="info">
+        <h3>🌍 地球-月球系统</h3>
+        <p>🖱️ 鼠标移动：旋转视角</p>
+        <p>🔄 月球轨道周期：约27.3天</p>
+        <p>🌙 月球距离：38.4万公里</p>
+    </div>
+    <div id="controls">
+        <div class="control-group">
+            <button id="toggleRotation">⏸️ 暂停自转</button>
+        </div>
+        <div class="control-group">
+            <label>速度: <span id="speedValue">1</span>x</label><br>
+            <input type="range" id="speedControl" min="0.1" max="5" step="0.1" value="1">
+        </div>
+        <div class="control-group">
+            <button id="resetView">🔄 重置视角</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // 场景设置
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // 相机位置
+        camera.position.set(0, 30, 50);
+        camera.lookAt(0, 0, 0);
+
+        // 光照系统
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        sunLight.position.set(100, 50, 50);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 500;
+        sunLight.shadow.camera.left = -100;
+        sunLight.shadow.camera.right = 100;
+        sunLight.shadow.camera.top = 100;
+        sunLight.shadow.camera.bottom = -100;
+        scene.add(sunLight);
+
+        // 创建地球纹理
+        function createEarthTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const context = canvas.getContext('2d');
+            
+            // 创建地球基础颜色
+            const gradient = context.createLinearGradient(0, 0, 512, 256);
+            gradient.addColorStop(0, '#4a90e2');
+            gradient.addColorStop(0.3, '#2e7d32');
+            gradient.addColorStop(0.6, '#8bc34a');
+            gradient.addColorStop(0.8, '#4a90e2');
+            gradient.addColorStop(1, '#1565c0');
+            
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 512, 256);
+            
+            // 添加大陆轮廓
+            context.fillStyle = '#2e7d32';
+            for (let i = 0; i < 20; i++) {
+                context.beginPath();
+                context.arc(
+                    Math.random() * 512,
+                    Math.random() * 256,
+                    Math.random() * 30 + 10,
+                    0, Math.PI * 2
+                );
+                context.fill();
+            }
+            
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // 创建地球
+        const earthGeometry = new THREE.SphereGeometry(10, 64, 64);
+        const earthTexture = createEarthTexture();
+        const earthMaterial = new THREE.MeshPhongMaterial({
+            map: earthTexture,
+            shininess: 100,
+            specular: 0x222222
+        });
+        const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+        earth.castShadow = true;
+        earth.receiveShadow = true;
+        scene.add(earth);
+
+        // 创建地球大气层
+        const atmosphereGeometry = new THREE.SphereGeometry(10.5, 32, 32);
+        const atmosphereMaterial = new THREE.MeshPhongMaterial({
+            color: 0x87ceeb,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.BackSide
+        });
+        const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        scene.add(atmosphere);
+
+        // 创建月球纹理
+        function createMoonTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const context = canvas.getContext('2d');
+            
+            // 月球基础颜色
+            context.fillStyle = '#c0c0c0';
+            context.fillRect(0, 0, 256, 256);
+            
+            // 添加陨石坑
+            context.fillStyle = '#a0a0a0';
+            for (let i = 0; i < 30; i++) {
+                context.beginPath();
+                context.arc(
+                    Math.random() * 256,
+                    Math.random() * 256,
+                    Math.random() * 15 + 5,
+                    0, Math.PI * 2
+                );
+                context.fill();
+            }
+            
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // 创建月球
+        const moonGeometry = new THREE.SphereGeometry(2.7, 32, 32);
+        const moonTexture = createMoonTexture();
+        const moonMaterial = new THREE.MeshPhongMaterial({
+            map: moonTexture,
+            shininess: 30
+        });
+        const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+        moon.castShadow = true;
+        moon.receiveShadow = true;
+
+        // 创建月球轨道组
+        const moonOrbit = new THREE.Group();
+        moonOrbit.add(moon);
+        scene.add(moonOrbit);
+
+        // 设置月球初始位置（距离地球约38.4万公里，按比例缩小）
+        moon.position.x = 25;
+
+        // 创建轨道线
+        const orbitCurve = new THREE.EllipseCurve(
+            0, 0,
+            25, 25,
+            0, 2 * Math.PI,
+            false,
+            0
+        );
+        const orbitPoints = orbitCurve.getPoints(100);
+        const orbitGeometry = new THREE.BufferGeometry().setFromPoints(orbitPoints);
+        const orbitMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x666666,
+            transparent: true,
+            opacity: 0.5
+        });
+        const orbitLine = new THREE.Line(orbitGeometry, orbitMaterial);
+        orbitLine.rotation.x = Math.PI / 2;
+        scene.add(orbitLine);
+
+        // 创建星空背景
+        function createStarField() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 2,
+                sizeAttenuation: false
+            });
+
+            const starsVertices = [];
+            for (let i = 0; i < 10000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starsVertices.push(x, y, z);
+            }
+
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            return new THREE.Points(starsGeometry, starsMaterial);
+        }
+
+        const stars = createStarField();
+        scene.add(stars);
+
+        // 控制变量
+        let isRotating = true;
+        let rotationSpeed = 1;
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+
+        // 鼠标控制
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        // 控制按钮
+        document.getElementById('toggleRotation').addEventListener('click', () => {
+            isRotating = !isRotating;
+            document.getElementById('toggleRotation').innerHTML = isRotating ? '⏸️ 暂停自转' : '▶️ 开始自转';
+        });
+
+        document.getElementById('speedControl').addEventListener('input', (event) => {
+            rotationSpeed = parseFloat(event.target.value);
+            document.getElementById('speedValue').textContent = rotationSpeed.toFixed(1);
+        });
+
+        document.getElementById('resetView').addEventListener('click', () => {
+            camera.position.set(0, 30, 50);
+            camera.lookAt(0, 0, 0);
+            targetRotationX = 0;
+            targetRotationY = 0;
+        });
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isRotating) {
+                // 地球自转
+                earth.rotation.y += 0.005 * rotationSpeed;
+                atmosphere.rotation.y += 0.005 * rotationSpeed;
+                
+                // 月球公转（约27.3天完成一圈，这里加快显示）
+                moonOrbit.rotation.y += 0.002 * rotationSpeed;
+                
+                // 月球自转（潮汐锁定，与公转同步）
+                moon.rotation.y += 0.002 * rotationSpeed;
+            }
+
+            // 平滑相机控制
+            targetRotationX += (mouseX * 0.5 - targetRotationX) * 0.05;
+            targetRotationY += (mouseY * 0.5 - targetRotationY) * 0.05;
+            
+            const radius = 60;
+            camera.position.x = Math.sin(targetRotationX) * radius;
+            camera.position.z = Math.cos(targetRotationX) * radius;
+            camera.position.y = 30 + targetRotationY * 20;
+            camera.lookAt(0, 0, 0);
+
+            // 星空缓慢旋转
+            stars.rotation.y += 0.0002;
+
+            renderer.render(scene, camera);
+        }
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 开始动画
+        animate();
+    </script>
+</body>
+</html>
