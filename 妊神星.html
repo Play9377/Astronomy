@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>妊神星系统模拟器 2026</title>
+    <style>
+        body { margin: 0; background: #01040a; color: #b39ddb; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+        canvas { display: block; }
+        
+        /* 科技感控制面板 */
+        .hud {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(18, 10, 35, 0.85);
+            padding: 22px; border-radius: 12px;
+            border: 1px solid #9575cd;
+            box-shadow: 0 0 30px rgba(149, 117, 205, 0.3);
+            width: 320px; backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        h2 { margin: 0 0 10px 0; font-size: 18px; letter-spacing: 2px; color: #fff; text-shadow: 0 0 10px #9575cd; border-bottom: 1px solid rgba(149,117,205,0.3); padding-bottom: 8px; }
+        
+        .ctrl-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+        button {
+            background: rgba(149, 117, 205, 0.1); border: 1px solid #9575cd;
+            color: #d1c4e9; padding: 10px; border-radius: 6px; cursor: pointer;
+            transition: 0.3s; font-size: 12px; font-weight: bold;
+        }
+        button:hover { background: #9575cd; color: #000; box-shadow: 0 0 15px #9575cd; }
+        .reset-btn { grid-column: span 2; border-color: #ff5252; color: #ff5252; }
+        .reset-btn:hover { background: #ff5252; color: #fff; }
+
+        .status-info { font-size: 13px; line-height: 1.8; color: #eee; }
+        .status-info b { color: #9575cd; }
+        
+        .moon-list {
+            margin-top: 15px; font-size: 11px; color: #b39ddb;
+            border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="hud">
+    <h2>HAUMEA SYSTEM 2026</h2>
+    <div class="controls">
+        <button onclick="updateTime(0.5)">减速 0.5x</button>
+        <button onclick="updateTime(2.0)">加速 2.0x</button>
+        <button id="pauseBtn" onclick="togglePause()" style="grid-column: span 2;">暂停模拟引擎</button>
+        <button class="reset-btn" onclick="resetSim()">初始化系统相位</button>
+    </div>
+    <div class="status-info">
+        时间流速: <b id="warpTxt">1.0x</b><br>
+        系统状态: <b id="statTxt">稳定运行</b><br>
+        当前日期: <b>2026-01-17</b>
+    </div>
+    <div class="moon-list">
+        • 妊神星 Haumea (橄榄球状矮行星)<br>
+        • 妊卫一 Hiʻiaka (希亚卡)<br>
+        • 妊卫二 Namaka (纳马卡)
+    </div>
+</div>
+
+<canvas id="haumeaCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('haumeaCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let time = 0;
+    let speed = 1.0;
+    let isPaused = false;
+    let stars = [];
+    let asteroids = [];
+
+    // 妊神星核心数据 (形状是扁的)
+    const haumeaBody = { cn: "妊神星", en: "Haumea", w: 55, h: 32 };
+    
+    // 卫星数据 (距离, 大小, 速度, 颜色, 中英文名)
+    const moons = [
+        { cn: "妊卫二", en: "Namaka", d: 110, s: 4, v: 0.03, c: "#b39ddb" },
+        { cn: "妊卫一", en: "Hiʻiaka", d: 210, s: 7, v: 0.012, c: "#d1c4e9" }
+    ];
+
+    function init() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // 1. 生成深空背景
+        stars = Array.from({length: 400}, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 1.5,
+            alpha: Math.random()
+        }));
+
+        // 2. 生成柯伊伯带陨石碎片 (壁垒区域)
+        asteroids = Array.from({length: 130}, () => ({
+            angle: Math.random() * Math.PI * 2,
+            dist: 320 + Math.random() * 120,
+            v: 0.003 + Math.random() * 0.005,
+            size: 0.8 + Math.random() * 2
+        }));
+    }
+
+    function draw() {
+        ctx.fillStyle = "#01040a";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+
+        // --- 绘制恒星 ---
+        stars.forEach(s => {
+            ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // --- 绘制陨石壁垒 ---
+        asteroids.forEach(a => {
+            const ax = cx + Math.cos(time * a.v + a.angle) * a.dist;
+            const ay = cy + Math.sin(time * a.v + a.angle) * a.dist;
+            ctx.fillStyle = "#4a148c";
+            ctx.beginPath(); ctx.arc(ax, ay, a.size, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // --- 绘制妊神星环 (Haumea Ring) ---
+        ctx.strokeStyle = "rgba(179, 157, 219, 0.25)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        // 行星环透视效果
+        ctx.ellipse(cx, cy, 75, 45, Math.PI / 6, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // --- 绘制妊神星主体 (橄榄球形状) ---
+        const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, haumeaBody.w);
+        grad.addColorStop(0, '#f3e5f5');
+        grad.addColorStop(0.7, '#b39ddb');
+        grad.addColorStop(1, '#512da8');
+        
+        ctx.save();
+        ctx.translate(cx, cy);
+        // 模拟妊神星的高速自转导致的扁率
+        ctx.rotate(time * 0.05); 
+        ctx.beginPath();
+        ctx.ellipse(0, 0, haumeaBody.w, haumeaBody.h, 0, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.shadowBlur = 30; ctx.shadowColor = "rgba(149, 117, 205, 0.5)";
+        ctx.fill();
+        ctx.restore();
+        ctx.shadowBlur = 0;
+
+        // 名字标签
+        ctx.fillStyle = "#fff"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(`${haumeaBody.cn} ${haumeaBody.en}`, cx, cy - 60);
+
+        // --- 绘制卫星、轨道与标签 ---
+        moons.forEach(m => {
+            // 清晰轨道线 (引力壁垒视觉化)
+            ctx.beginPath();
+            ctx.arc(cx, cy, m.d, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(149, 117, 205, 0.15)";
+            ctx.setLineDash([5, 5]); 
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 计算卫星位置
+            const x = cx + Math.cos(time * m.v) * m.d;
+            const y = cy + Math.sin(time * m.v) * m.d;
+
+            // 卫星主体
+            ctx.shadowBlur = 12; ctx.shadowColor = m.c;
+            ctx.beginPath(); ctx.arc(x, y, m.s, 0, Math.PI * 2);
+            ctx.fillStyle = m.c; ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 卫星中英文名对照
+            ctx.fillStyle = "rgba(255,255,255,0.85)";
+            ctx.font = "12px sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText(`${m.cn} ${m.en}`, x + m.s + 8, y + 4);
+        });
+
+        if (!isPaused) time += 0.5 * speed;
+        requestAnimationFrame(draw);
+    }
+
+    // --- 控制面板逻辑 ---
+    function updateTime(f) {
+        speed *= f;
+        speed = Math.min(Math.max(speed, 0.1), 16);
+        document.getElementById('warpTxt').innerText = speed.toFixed(1) + "x";
+    }
+
+    function togglePause() {
+        isPaused = !isPaused;
+        document.getElementById('pauseBtn').innerText = isPaused ? "重启物理引擎" : "暂停模拟引擎";
+        document.getElementById('statTxt').innerText = isPaused ? "系统已锁定" : "稳定运行";
+        document.getElementById('statTxt').style.color = isPaused ? "#ff5252" : "#9575cd";
+    }
+
+    function resetSim() {
+        time = 0; speed = 1.0; isPaused = false;
+        document.getElementById('warpTxt').innerText = "1.0x";
+        document.getElementById('statTxt').innerText = "稳定运行";
+        document.getElementById('pauseBtn').innerText = "暂停模拟引擎";
+    }
+
+    window.addEventListener('resize', init);
+    init();
+    draw();
+</script>
+
+</body>
+</html>

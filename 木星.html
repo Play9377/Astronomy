@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>木星天体运动模拟器 - JUPITER 2026</title>
+    <style>
+        body { margin: 0; background: #010205; color: #00f2ff; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        canvas { display: block; }
+        
+        /* UI 交互面板 */
+        .ui-overlay {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(4, 12, 24, 0.9);
+            padding: 20px; border-radius: 15px;
+            border: 1px solid #0066ff;
+            box-shadow: 0 0 30px rgba(0, 102, 255, 0.3);
+            width: 260px; pointer-events: auto;
+        }
+        h2 { margin: 0 0 15px 0; font-size: 18px; letter-spacing: 2px; color: #fff; text-shadow: 0 0 10px #0066ff; }
+        
+        .ctrl-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+        button {
+            background: rgba(0, 102, 255, 0.2); border: 1px solid #0066ff;
+            color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer;
+            transition: all 0.2s; font-size: 12px; flex-grow: 1;
+        }
+        button:hover { background: #0066ff; box-shadow: 0 0 15px #0066ff; }
+        button:active { transform: scale(0.95); }
+        
+        .stats { font-size: 13px; border-top: 1px solid rgba(0, 242, 255, 0.2); padding-top: 10px; line-height: 1.8; }
+        .stats b { color: #fff; }
+        .legend { margin-top: 5px; font-size: 11px; color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="ui-overlay">
+    <h2>木星指挥中心</h2>
+    <div class="ctrl-group">
+        <button onclick="updateSpeed(0.5)">减速 0.5x</button>
+        <button onclick="updateSpeed(2.0)">加速 2.0x</button>
+        <button id="pauseBtn" onclick="togglePause()">暂停系统</button>
+        <button onclick="resetSystem()" style="border-color:#ff4444; color:#ff4444;">系统重置</button>
+    </div>
+    <div class="stats">
+        当前流速: <b id="speedVal">1.0x</b><br>
+        天体状态: <b id="statusVal">同步轨道中</b><br>
+        区域陨石: <b id="rockCount">120</b>
+    </div>
+    <div class="legend">提示: 卫星轨道包含引力壁垒保护。</div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let time = 0;
+    let speed = 1.0;
+    let isPaused = false;
+    let stars = [];
+    let asteroids = [];
+
+    // 天体定义
+    const jupiter = { name: "木星 (Jupiter)", r: 45 };
+    const moons = [
+        { name: "Io (木卫一)", dist: 100, size: 5, speed: 0.04, color: "#f9f06b" },
+        { name: "Europa (木卫二)", dist: 160, size: 4, speed: 0.02, color: "#a5c7f7" },
+        { name: "Ganymede (木卫三)", dist: 240, size: 8, speed: 0.01, color: "#9e9e9e" },
+        { name: "Callisto (木卫四)", dist: 350, size: 7, speed: 0.005, color: "#5c6b61" }
+    ];
+
+    function init() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // 生成静态星空
+        stars = Array.from({length: 400}, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            o: Math.random()
+        }));
+
+        // 生成陨石带 (在木卫三和四之间)
+        asteroids = Array.from({length: 120}, () => ({
+            angle: Math.random() * Math.PI * 2,
+            dist: 280 + Math.random() * 40,
+            size: 1 + Math.random() * 2,
+            speed: 0.006 + Math.random() * 0.004
+        }));
+    }
+
+    function draw() {
+        ctx.fillStyle = "#010205";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+
+        // 1. 星空
+        stars.forEach(s => {
+            ctx.fillStyle = `rgba(255, 255, 255, ${s.o})`;
+            ctx.fillRect(s.x, s.y, 1, 1);
+        });
+
+        // 2. 木星 (核心)
+        const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, jupiter.r);
+        grad.addColorStop(0, '#ffd194');
+        grad.addColorStop(0.5, '#d1913c');
+        grad.addColorStop(1, '#5a3d1c');
+        
+        ctx.shadowBlur = 40;
+        ctx.shadowColor = "#d1913c";
+        ctx.beginPath();
+        ctx.arc(cx, cy, jupiter.r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.font = "bold 14px Segoe UI";
+        ctx.fillText(jupiter.name, cx, cy - jupiter.r - 20);
+
+        // 3. 陨石带
+        asteroids.forEach(a => {
+            const ax = cx + Math.cos(time * a.speed + a.angle) * a.dist;
+            const ay = cy + Math.sin(time * a.speed + a.angle) * a.dist;
+            ctx.fillStyle = "#706d6a";
+            ctx.beginPath();
+            ctx.arc(ax, ay, a.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // 4. 卫星、轨道与壁垒
+        moons.forEach(m => {
+            // 绘制轨道线
+            ctx.beginPath();
+            ctx.arc(cx, cy, m.dist, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(0, 242, 255, 0.1)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 绘制“壁垒” (视觉保护环)
+            ctx.beginPath();
+            ctx.arc(cx, cy, m.dist, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(0, 242, 255, 0.03)";
+            ctx.lineWidth = 8;
+            ctx.stroke();
+
+            // 卫星位置计算
+            const mx = cx + Math.cos(time * m.speed) * m.dist;
+            const my = cy + Math.sin(time * m.speed) * m.dist;
+
+            // 卫星主体
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = m.color;
+            ctx.beginPath();
+            ctx.arc(mx, my, m.size, 0, Math.PI * 2);
+            ctx.fillStyle = m.color;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 卫星名字
+            ctx.fillStyle = "#fff";
+            ctx.font = "12px Segoe UI";
+            ctx.textAlign = "left";
+            ctx.fillText(m.name, mx + 12, my + 4);
+        });
+
+        if (!isPaused) time += speed;
+        requestAnimationFrame(draw);
+    }
+
+    // 控制接口
+    function updateSpeed(factor) {
+        speed *= factor;
+        speed = Math.min(Math.max(speed, 0.1), 16); // 限制速度范围
+        document.getElementById('speedVal').innerText = speed.toFixed(1) + "x";
+    }
+
+    function togglePause() {
+        isPaused = !isPaused;
+        document.getElementById('pauseBtn').innerText = isPaused ? "恢复运行" : "暂停系统";
+        document.getElementById('statusVal').innerText = isPaused ? "系统停滞" : "同步轨道中";
+        document.getElementById('statusVal').style.color = isPaused ? "#ff4444" : "#00f2ff";
+    }
+
+    function resetSystem() {
+        time = 0;
+        speed = 1.0;
+        isPaused = false;
+        document.getElementById('speedVal').innerText = "1.0x";
+        document.getElementById('pauseBtn').innerText = "暂停系统";
+        document.getElementById('statusVal').innerText = "同步轨道中";
+    }
+
+    window.addEventListener('resize', init);
+    init();
+    draw();
+</script>
+
+</body>
+</html>

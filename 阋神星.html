@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>阋神星系统模拟器 2026</title>
+    <style>
+        body { margin: 0; background: #010208; color: #b0bec5; font-family: 'Microsoft YaHei', sans-serif; overflow: hidden; }
+        canvas { display: block; }
+        
+        /* 科技感 HUD */
+        .hud {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(10, 20, 30, 0.9);
+            padding: 20px; border-radius: 12px;
+            border: 1px solid #546e7a;
+            box-shadow: 0 0 25px rgba(84, 110, 122, 0.4);
+            width: 300px; backdrop-filter: blur(10px);
+        }
+        h2 { margin: 0 0 10px 0; font-size: 18px; letter-spacing: 2px; color: #fff; text-shadow: 0 0 10px #81d4fa; border-bottom: 1px solid #546e7a; padding-bottom: 8px; }
+        
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+        button {
+            background: rgba(84, 110, 122, 0.2); border: 1px solid #81d4fa;
+            color: #81d4fa; padding: 10px; border-radius: 6px; cursor: pointer;
+            transition: 0.3s; font-size: 12px; font-weight: bold;
+        }
+        button:hover { background: #81d4fa; color: #000; box-shadow: 0 0 15px #81d4fa; }
+        .reset-btn { grid-column: span 2; border-color: #ff5252; color: #ff5252; }
+        .reset-btn:hover { background: #ff5252; color: #fff; }
+
+        .status { font-size: 13px; line-height: 1.8; color: #eee; }
+        .status b { color: #81d4fa; }
+        
+        .moon-info { margin-top: 10px; font-size: 11px; color: #90a4ae; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="hud">
+    <h2>ERIS SYSTEM 2026</h2>
+    <div class="controls">
+        <button onclick="changeSpeed(0.5)">减速 0.5x</button>
+        <button onclick="changeSpeed(2.0)">加速 2.0x</button>
+        <button id="pauseBtn" onclick="togglePause()" style="grid-column: span 2;">暂停模拟引擎</button>
+        <button class="reset-btn" onclick="resetSim()">初始化物理相位</button>
+    </div>
+    <div class="status">
+        时间流速: <b id="speedVal">1.0x</b><br>
+        系统状态: <b id="statusVal">稳定运行</b><br>
+        当前日期: <b>2026-01-17</b>
+    </div>
+    <div class="moon-info">
+        • 阋神星 (Eris) - 矮行星<br>
+        • 阋卫一 (Dysnomia) - 唯一已知卫星
+    </div>
+</div>
+
+<canvas id="erisCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('erisCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let time = 0;
+    let timeScale = 1.0;
+    let isPaused = false;
+    let stars = [];
+    let asteroids = [];
+
+    const erisBody = { cn: "阋神星", en: "Eris", r: 40 };
+    const dysnomia = { cn: "阋卫一", en: "Dysnomia", dist: 130, size: 7, speed: 0.015, color: "#90a4ae" };
+
+    function init() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // 1. 生成深空恒星背景
+        stars = Array.from({length: 400}, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 1.5,
+            alpha: Math.random()
+        }));
+
+        // 2. 生成柯伊伯带陨石壁垒 (外围轨道)
+        asteroids = Array.from({length: 120}, () => ({
+            angle: Math.random() * Math.PI * 2,
+            dist: 250 + Math.random() * 150,
+            v: 0.002 + Math.random() * 0.005,
+            size: 1 + Math.random() * 2.5
+        }));
+    }
+
+    function draw() {
+        ctx.fillStyle = "#010208";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+
+        // --- 绘制恒星 ---
+        stars.forEach(s => {
+            ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // --- 绘制陨石壁垒 (不规则碎片) ---
+        asteroids.forEach(a => {
+            const ax = cx + Math.cos(time * a.v + a.angle) * a.dist;
+            const ay = cy + Math.sin(time * a.v + a.angle) * a.dist;
+            ctx.fillStyle = "#455a64";
+            ctx.beginPath(); ctx.arc(ax, ay, a.size, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // --- 绘制阋卫一轨道 (清晰轨道线) ---
+        ctx.beginPath();
+        ctx.arc(cx, cy, dysnomia.dist, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(129, 212, 250, 0.2)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 10]); // 虚线轨道增加科技感
+        ctx.stroke();
+        ctx.setLineDash([]); // 还原实线
+
+        // --- 绘制阋神星 (Eris) ---
+        const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, erisBody.r);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.5, '#cfd8dc');
+        grad.addColorStop(1, '#78909c');
+        
+        ctx.shadowBlur = 40; ctx.shadowColor = "rgba(255, 255, 255, 0.4)";
+        ctx.beginPath(); ctx.arc(cx, cy, erisBody.r, 0, Math.PI * 2);
+        ctx.fillStyle = grad; ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 名字标注
+        ctx.fillStyle = "#fff"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(`${erisBody.cn} ${erisBody.en}`, cx, cy - erisBody.r - 25);
+
+        // --- 绘制阋卫一 (Dysnomia) ---
+        const mx = cx + Math.cos(time * dysnomia.speed) * dysnomia.dist;
+        const my = cy + Math.sin(time * dysnomia.speed) * dysnomia.dist;
+
+        ctx.shadowBlur = 15; ctx.shadowColor = dysnomia.color;
+        ctx.beginPath(); ctx.arc(mx, my, dysnomia.size, 0, Math.PI * 2);
+        ctx.fillStyle = dysnomia.color; ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 卫星中英文名标签
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(`${dysnomia.cn} ${dysnomia.en}`, mx + dysnomia.size + 8, my + 4);
+
+        if (!isPaused) time += 0.5 * timeScale;
+        requestAnimationFrame(draw);
+    }
+
+    // --- 指挥逻辑 ---
+    function changeSpeed(f) {
+        timeScale *= f;
+        timeScale = Math.min(Math.max(timeScale, 0.1), 16);
+        document.getElementById('speedVal').innerText = timeScale.toFixed(1) + "x";
+    }
+
+    function togglePause() {
+        isPaused = !isPaused;
+        document.getElementById('pauseBtn').innerText = isPaused ? "重启物理引擎" : "暂停模拟引擎";
+        document.getElementById('statusVal').innerText = isPaused ? "引擎已锁定" : "稳定运行";
+        document.getElementById('statusVal').style.color = isPaused ? "#ff5252" : "#81d4fa";
+    }
+
+    function resetSim() {
+        time = 0; timeScale = 1.0; isPaused = false;
+        document.getElementById('speedVal').innerText = "1.0x";
+        document.getElementById('statusVal').innerText = "稳定运行";
+        document.getElementById('pauseBtn').innerText = "暂停模拟引擎";
+    }
+
+    window.addEventListener('resize', init);
+    init();
+    draw();
+</script>
+
+</body>
+</html>

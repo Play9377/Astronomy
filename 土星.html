@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>土星系统模拟器 2026 - 146 Moons</title>
+    <style>
+        body { margin: 0; background: #02050a; color: #ffcc80; font-family: 'Segoe UI', Tahoma, sans-serif; overflow: hidden; }
+        canvas { display: block; }
+        
+        /* 科技感控制面板 */
+        .hud {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(10, 15, 25, 0.9);
+            padding: 20px; border-radius: 12px;
+            border: 1px solid #ffa726;
+            box-shadow: 0 0 30px rgba(255, 167, 38, 0.3);
+            width: 320px; backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        h2 { margin: 0 0 10px 0; font-size: 18px; letter-spacing: 2px; color: #fff; text-shadow: 0 0 10px #ffa726; border-bottom: 1px solid rgba(255,167,38,0.3); padding-bottom: 8px; }
+        
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 15px 0; }
+        button {
+            background: rgba(255, 167, 38, 0.1); border: 1px solid #ffa726;
+            color: #ffa726; padding: 10px; border-radius: 6px; cursor: pointer;
+            transition: 0.3s; font-size: 12px; font-weight: bold;
+        }
+        button:hover { background: #ffa726; color: #000; box-shadow: 0 0 15px #ffa726; }
+        .reset-btn { grid-column: span 2; border-color: #ff5252; color: #ff5252; }
+        
+        .status-panel { font-size: 13px; line-height: 1.6; color: #eee; }
+        .status-panel b { color: #ffa726; }
+        
+        /* 卫星数据库列表 */
+        .moon-database {
+            margin-top: 15px; height: 180px; overflow-y: auto;
+            font-size: 11px; color: #999; border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 10px; scrollbar-width: thin;
+        }
+        .moon-entry { display: inline-block; width: 48%; margin-bottom: 2px; }
+        .major { color: #fff; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="hud">
+    <h2>SATURN EXPLORER 2026</h2>
+    <div class="controls">
+        <button onclick="changeTime(0.5)">减速 <<</button>
+        <button onclick="changeTime(2.0)">加速 >></button>
+        <button id="pauseBtn" onclick="togglePause()" style="grid-column: span 2;">暂停模拟引擎</button>
+        <button class="reset-btn" onclick="resetSim()">初始化 146 颗卫星轨道</button>
+    </div>
+    <div class="status-panel">
+        时间流速: <b id="warpVal">1.0x</b> | 状态: <b id="statVal">稳定运行</b><br>
+        卫星总数: <b>146 颗 (2026 确证)</b><br>
+        当前日期: <b>2026-01-17</b>
+    </div>
+    <div class="moon-database" id="moonCatalog"></div>
+</div>
+
+<canvas id="sim"></canvas>
+
+<script>
+    const canvas = document.getElementById('sim');
+    const ctx = canvas.getContext('2d');
+
+    let time = 0;
+    let speed = 1.0;
+    let isPaused = false;
+    let stars = [];
+    let debris = [];
+    let moons = [];
+
+    // 核心主卫星数据 (选取的著名代表)
+    const majorMoons = [
+        { name: "Mimas 弥玛斯", dist: 80, size: 3, v: 0.05, c: "#e0e0e0" },
+        { name: "Enceladus 恩克拉多斯", dist: 105, size: 3.5, v: 0.04, c: "#fff" },
+        { name: "Tethys 特提斯", dist: 135, size: 4, v: 0.035, c: "#d1d1d1" },
+        { name: "Dione 狄俄涅", dist: 170, size: 4, v: 0.028, c: "#c0c0c0" },
+        { name: "Rhea 瑞亚", dist: 210, size: 5, v: 0.02, c: "#a1a1a1" },
+        { name: "Titan 土卫六", dist: 290, size: 10, v: 0.012, c: "#ffcc80" },
+        { name: "Hyperion 许珀里翁", dist: 340, size: 2.5, v: 0.009, c: "#8d6e63" },
+        { name: "Iapetus 伊阿珀托斯", dist: 430, size: 5, v: 0.005, c: "#546e7a" },
+        { name: "Phoebe 菲比", dist: 580, size: 3, v: -0.003, c: "#444" } // 逆行
+    ];
+
+    function setupMoons() {
+        moons = [];
+        // 1. 加入主要卫星
+        majorMoons.forEach(m => moons.push({ ...m, isMajor: true }));
+        
+        // 2. 随机生成其余卫星至 146 颗
+        for (let i = moons.length + 1; i <= 146; i++) {
+            const d = 300 + Math.random() * 500; // 分布在广阔轨道
+            moons.push({
+                name: `S/2026 S ${i}`,
+                dist: d,
+                size: 1 + Math.random() * 1.5,
+                v: (0.015 / (d / 100)) * (Math.random() > 0.2 ? 1 : -1), // 物理规律：远则慢，带逆行概率
+                c: "#888",
+                isMajor: false
+            });
+        }
+        
+        // 更新列表显示
+        const catalog = document.getElementById('moonCatalog');
+        catalog.innerHTML = moons.map(m => 
+            `<div class="moon-entry ${m.isMajor?'major':''}">• ${m.name}</div>`
+        ).join('');
+    }
+
+    function initEnvironment() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // 生成星空
+        stars = Array.from({length: 500}, () => ({
+            x: Math.random() * canvas.width, y: Math.random() * canvas.height, alpha: Math.random()
+        }));
+
+        // 生成环内陨石 (壁垒区域)
+        debris = Array.from({length: 150}, () => ({
+            angle: Math.random() * Math.PI * 2,
+            dist: 120 + Math.random() * 80,
+            v: 0.008 + Math.random() * 0.01,
+            s: Math.random() * 1.5
+        }));
+    }
+
+    function draw() {
+        ctx.fillStyle = "#01040a";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+
+        // 1. 绘制背景星空
+        stars.forEach(s => {
+            ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+            ctx.fillRect(s.x, s.y, 1.2, 1.2);
+        });
+
+        // 2. 绘制陨石碎片
+        debris.forEach(d => {
+            const dx = cx + Math.cos(time * d.v + d.angle) * d.dist;
+            const dy = cy + Math.sin(time * d.v + d.angle) * d.dist;
+            ctx.fillStyle = "#6d4c41";
+            ctx.fillRect(dx, dy, d.s, d.s);
+        });
+
+        // 3. 绘制土星光环 (多重视觉壁垒)
+        ctx.lineWidth = 1;
+        for(let i=0; i<25; i++) {
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(210, 180, 140, ${0.1 - i*0.003})`;
+            ctx.ellipse(cx, cy, 50 + 15 + i*4, 25 + 5 + i, 0.25, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // 4. 绘制土星主体
+        const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, 45);
+        grad.addColorStop(0, '#fff9c4');
+        grad.addColorStop(0.5, '#fbc02d');
+        grad.addColorStop(1, '#5d4037');
+        ctx.shadowBlur = 40; ctx.shadowColor = "#fbc02d";
+        ctx.beginPath(); ctx.arc(cx, cy, 45, 0, Math.PI * 2);
+        ctx.fillStyle = grad; ctx.fill(); ctx.shadowBlur = 0;
+
+        ctx.fillStyle = "#fff"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("土星 SATURN", cx, cy - 65);
+
+        // 5. 绘制 146 颗卫星
+        moons.forEach(m => {
+            // 轨道线 (仅主卫星或超低速可见，防视觉污染)
+            if (m.isMajor || speed < 0.2) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, m.dist, 0, Math.PI * 2);
+                ctx.strokeStyle = m.isMajor ? "rgba(255, 167, 38, 0.12)" : "rgba(255, 255, 255, 0.03)";
+                ctx.stroke();
+            }
+
+            const x = cx + Math.cos(time * m.v) * m.dist;
+            const y = cy + Math.sin(time * m.v) * m.dist;
+
+            ctx.fillStyle = m.isMajor ? m.c : "#777";
+            ctx.beginPath(); ctx.arc(x, y, m.size, 0, Math.PI * 2); ctx.fill();
+
+            // 名字标签渲染
+            if (m.isMajor || (speed < 0.1)) {
+                ctx.fillStyle = "rgba(255,255,255,0.7)";
+                ctx.font = m.isMajor ? "11px Arial" : "9px Arial";
+                ctx.textAlign = "left";
+                ctx.fillText(m.name, x + m.size + 5, y + 3);
+            }
+        });
+
+        if (!isPaused) time += 0.5 * speed;
+        requestAnimationFrame(draw);
+    }
+
+    // --- 指挥中心逻辑 ---
+    function changeTime(f) {
+        speed *= f;
+        speed = Math.min(Math.max(speed, 0.05), 32);
+        document.getElementById('warpVal').innerText = speed.toFixed(2) + "x";
+    }
+
+    function togglePause() {
+        isPaused = !isPaused;
+        document.getElementById('pauseBtn').innerText = isPaused ? "重启物理模拟" : "暂停模拟引擎";
+        document.getElementById('statVal').innerText = isPaused ? "引擎已停机" : "稳定运行";
+        document.getElementById('statVal').style.color = isPaused ? "#ff5252" : "#ffa726";
+    }
+
+    function resetSim() {
+        time = 0; speed = 1.0; isPaused = false;
+        document.getElementById('warpVal').innerText = "1.0x";
+        document.getElementById('pauseBtn').innerText = "暂停模拟引擎";
+        setupMoons();
+    }
+
+    window.addEventListener('resize', initEnvironment);
+    initEnvironment();
+    setupMoons();
+    draw();
+</script>
+
+</body>
+</html>
